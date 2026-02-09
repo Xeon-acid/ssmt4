@@ -6,11 +6,8 @@
 <template>
   <el-config-provider>
     <el-container class="app-container">
-      <el-aside width="250px" class="app-aside">
+      <el-aside width="auto" class="app-aside">
         <div class="aside-flex">
-          <div class="app-logo">
-            <h2>SSMT4 Tools</h2>
-          </div>
           
           <el-menu
             :default-active="$route.path"
@@ -87,17 +84,6 @@ html, body {
   display: flex;
   flex-direction: column;
   height: 100%;
-}
-
-.app-logo {
-  padding: 20px;
-  text-align: center;
-  border-bottom: 1px solid var(--el-border-color-light);
-}
-.app-logo h2 {
-  margin: 0;
-  font-size: 18px;
-  color: var(--el-text-color-primary);
 }
 
 .menu-top {
