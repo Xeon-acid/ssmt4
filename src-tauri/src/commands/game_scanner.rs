@@ -1,7 +1,6 @@
 ﻿use std::fs;
 use tauri::{AppHandle, Manager};
-use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use serde::{Serialize};
 use std::path::{Path, PathBuf};
 
 #[derive(Serialize)]
@@ -11,20 +10,6 @@ pub struct GameInfo {
     pub icon_path: String,
     pub bg_path: String,
     pub bg_video_path: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct GameIconSetting {
-    #[serde(rename = "GameName")]
-    game_name: String,
-    #[serde(rename = "Show")]
-    show: bool,
-}
-
-#[derive(Deserialize)]
-struct GameIconConfig {
-    #[serde(rename = "GameIconSettingList")]
-    list: Vec<GameIconSetting>,
 }
 
 // Normalize paths: strip Windows extended prefix and force forward slashes so convertFileSrc gets a POSIX-ish path

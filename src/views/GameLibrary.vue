@@ -1,9 +1,6 @@
 <script setup lang="ts">
 import { gamesList, switchToGame, appSettings } from '../store';
-import { useRouter } from 'vue-router';
 import { reactive, type CSSProperties, ref } from 'vue';
-
-const router = useRouter();
 
 // Reactive styles for animation
 const cardStyles = reactive<Record<string, CSSProperties>>({});

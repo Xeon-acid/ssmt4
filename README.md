@@ -6,7 +6,7 @@
 
 第四代超简单3Dmigoto工具箱(Super Simple Migoto Tools 4th)
 
-![alt text](image.png)
+
 
 使用文档与开发笔记:
 
