@@ -4,7 +4,6 @@ import { appSettings } from '../store'
 
 <template>
   <div class="page-container">
-    <h1>设置 (Settings)</h1>
     
     <el-card>
       <template #header>

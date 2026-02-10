@@ -1,7 +1,8 @@
 import { reactive, watch } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
 
 // Define the shape of our settings
-interface AppSettings {
+export interface AppSettings {
   bgType: 'image' | 'video';
   bgImage: string;
   bgVideo: string;
@@ -11,8 +12,6 @@ interface AppSettings {
   contentBlur: number;
 }
 
-// Load from localStorage or use defaults
-const saved = localStorage.getItem('ssmt4-settings')
 const defaultSettings: AppSettings = {
   bgType: 'image',
   bgImage: '/background.png',
@@ -23,11 +22,27 @@ const defaultSettings: AppSettings = {
   contentBlur: 3
 }
 
-export const appSettings = reactive<AppSettings>(
-  saved ? { ...defaultSettings, ...JSON.parse(saved) } : defaultSettings
-)
+export const appSettings = reactive<AppSettings>({ ...defaultSettings })
+
+// Load from backend
+async function loadSettings() {
+  try {
+    const loaded = await invoke<AppSettings>('load_settings')
+    // Update reactive object with loaded values
+    Object.assign(appSettings, loaded)
+  } catch (e) {
+    console.error('Failed to load settings:', e)
+  }
+}
+
+// Initial load
+loadSettings()
 
 // Auto-save behavior
-watch(appSettings, (newVal) => {
-  localStorage.setItem('ssmt4-settings', JSON.stringify(newVal))
+watch(appSettings, async (newVal) => {
+  try {
+    await invoke('save_settings', { config: newVal })
+  } catch (e) {
+    console.error('Failed to save settings:', e)
+  }
 })
