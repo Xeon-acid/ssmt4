@@ -12,8 +12,8 @@ pub fn run() {
         // 从各个子模块中注册命令
         .invoke_handler(tauri::generate_handler![
             commands::common::greet,
-            commands::settings::save,
-            commands::settings::load,
+            commands::settings::save_settings,
+            commands::settings::load_settings,
             commands::process::run_resource_executable
         ])
         .run(tauri::generate_context!())

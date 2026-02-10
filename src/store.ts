@@ -1,5 +1,6 @@
 import { reactive, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import { message } from '@tauri-apps/plugin-dialog'
 
 // Define the shape of our settings
 export interface AppSettings {
@@ -26,14 +27,29 @@ const defaultSettings: AppSettings = {
 
 export const appSettings = reactive<AppSettings>({ ...defaultSettings })
 
-// Load from backend
+// Load from backend - replaced below
+
+
+// Initial load
+let isInitialized = false;
+
 async function loadSettings() {
   try {
-    const loaded = await invoke<AppSettings>('loadSettings')
+    const loaded = await invoke<AppSettings>('load_settings')
+    console.log('Loaded settings from backend:', loaded);
+    
     // Update reactive object with loaded values
     Object.assign(appSettings, loaded)
+    
+    // Mark as initialized so watch can start saving changes
+    // using setTimeout to ensure the current tick doesn't trigger watch
+    setTimeout(() => {
+        isInitialized = true;
+    }, 100);
+    
   } catch (e) {
     console.error('Failed to load settings:', e)
+    await message(`加载设置失败: ${e}`, { title: '错误', kind: 'error' });
   }
 }
 
@@ -42,9 +58,14 @@ loadSettings()
 
 // Auto-save behavior
 watch(appSettings, async (newVal) => {
+  if (!isInitialized) {
+      console.log('Skipping save because store is not yet initialized');
+      return;
+  }
+  console.log('Saving settings:', newVal);
   try {
-    await invoke('saveSettings', { config: newVal })
+    await invoke('save_settings', { config: newVal })
   } catch (e) {
     console.error('Failed to save settings:', e)
   }
-})
+}, { deep: true })
