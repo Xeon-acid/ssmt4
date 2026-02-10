@@ -13,6 +13,7 @@ pub struct AppConfig {
     pub sidebar_blur: f64,
     pub content_opacity: f64,
     pub content_blur: f64,
+    pub cache_dir: String,
 }
 
 impl Default for AppConfig {
@@ -25,6 +26,7 @@ impl Default for AppConfig {
             sidebar_blur: 20.0,
             content_opacity: 0.2,
             content_blur: 3.0,
+            cache_dir: "".to_string(),
         }
     }
 }

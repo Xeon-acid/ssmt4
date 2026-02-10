@@ -1,9 +1,40 @@
 <script setup lang="ts">
 import { appSettings } from '../store'
+import { open } from '@tauri-apps/plugin-dialog';
+
+const selectCacheDir = async () => {
+  const selected = await open({
+    directory: true,
+    multiple: false,
+    title: '选择 SSMT 缓存文件夹'
+  });
+  
+  if (selected && typeof selected === 'string') {
+    appSettings.cacheDir = selected;
+  }
+};
 </script>
 
 <template>
   <div class="page-container">
+
+    <el-card>
+      <template #header>
+        <div class="card-header">
+          <span>基础设置</span>
+        </div>
+      </template>
+      <el-form label-width="140px">
+        <el-form-item label="SSMT缓存文件夹">
+          <div style="display: flex; gap: 10px; width: 100%;">
+            <el-input v-model="appSettings.cacheDir" placeholder="请选择或输入缓存文件夹路径" />
+            <el-button @click="selectCacheDir">选择文件夹</el-button>
+          </div>
+        </el-form-item>
+      </el-form>
+    </el-card>
+
+    <br />
     
     <el-card>
       <template #header>

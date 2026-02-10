@@ -10,6 +10,7 @@ export interface AppSettings {
   sidebarBlur: number;
   contentOpacity: number;
   contentBlur: number;
+  cacheDir: string;
 }
 
 const defaultSettings: AppSettings = {
@@ -19,7 +20,8 @@ const defaultSettings: AppSettings = {
   sidebarOpacity: 0.3, // Lower default for dark theme transparency
   sidebarBlur: 20,
   contentOpacity: 0.2, // Lower default for dark theme transparency
-  contentBlur: 3
+  contentBlur: 3,
+  cacheDir: ''
 }
 
 export const appSettings = reactive<AppSettings>({ ...defaultSettings })

@@ -7,11 +7,14 @@ mod commands; // 引入统一的命令模块
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_shell::init())
         // 从各个子模块中注册命令
         .invoke_handler(tauri::generate_handler![
             commands::common::greet,
             commands::settings::save,
-            commands::settings::load
+            commands::settings::load,
+            commands::process::run_resource_executable
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
