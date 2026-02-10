@@ -13,18 +13,20 @@ pub struct GameInfo {
 
 #[tauri::command]
 pub fn scan_games(app: AppHandle) -> Result<Vec<GameInfo>, String> {
-    let resource_dir = app.path().resolve("resources/Games", BaseDirectory::Resource)
-        .map_err(|e| format!("Failed to resolve resource path: {}", e))?;
+    let resource_dir = app.path().resource_dir()
+    .map_err(|e| format!("Failed to resolve resource path: {}", e))?;
 
-    println!("Scanning games in: {:?}", resource_dir);
+    let games_dir = resource_dir.join("resources").join("Games");
 
-    if !resource_dir.exists() {
-        return Err(format!("Games directory not found at: {:?}", resource_dir));
+    println!("Scanning games in: {:?}", games_dir);
+
+    if !games_dir.exists() {
+        return Err(format!("Games directory not found at: {:?}", games_dir));
     }
 
     let mut games = Vec::new();
 
-    let entries = fs::read_dir(&resource_dir)
+    let entries = fs::read_dir(&games_dir)
         .map_err(|e| format!("Failed to read games directory: {}", e))?;
 
     for entry in entries {

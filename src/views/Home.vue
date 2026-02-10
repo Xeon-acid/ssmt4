@@ -15,6 +15,17 @@ const handleGameSelect = (game: any) => {
   switchToGame(game);
 };
 
+// 新增：解析 background 路径（优先使用 game.backgroundPath；支持 public 和 Electron __static）
+const resolveBackground = (game: any) => {
+  if (game.backgroundPath) return game.backgroundPath;
+  // public 下的路径（开发/部署到 web）
+  const publicPath = `/Games/${game.name}/background.png`;
+  // Electron 打包时常用的静态目录变量
+  // @ts-ignore
+  if ((window as any).__static) return `${(window as any).__static}/Games/${game.name}/background.png`;
+  return publicPath;
+};
+
 </script>
 
 <template>
@@ -32,6 +43,9 @@ const handleGameSelect = (game: any) => {
             :class="{ active: appSettings.currentConfigName === game.name }"
             @click="handleGameSelect(game)"
           >
+            <!-- 新增：背景图 -->
+            <div class="game-bg" :style="{ backgroundImage: `url(${resolveBackground(game)})` }"></div>
+
             <div class="game-icon-wrapper">
               <img :src="game.iconPath" class="game-icon" alt="icon" />
             </div>
