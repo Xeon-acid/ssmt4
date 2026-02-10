@@ -82,11 +82,13 @@ const bgStyle = computed(() => {
         '--content-bg-opacity': appSettings.contentOpacity,
         '--content-blur': `${appSettings.contentBlur}px`
       }">
-        <router-view v-slot="{ Component }">
-          <transition name="fade" mode="out-in">
-            <component :is="Component" />
-          </transition>
-        </router-view>
+        <div class="content-scroll-wrapper">
+          <router-view v-slot="{ Component }">
+            <transition name="fade" mode="out-in">
+              <component :is="Component" />
+            </transition>
+          </router-view>
+        </div>
       </el-main>
     </el-container>
   </el-config-provider>
@@ -199,17 +201,24 @@ html, body {
 }
 
 .app-main {
-  padding: 52px 20px 20px 20px;
+  padding: 0;
+  overflow: hidden;
+  position: relative;
   /* Content area: Configurable */
   background-color: rgba(255, 255, 255, var(--content-bg-opacity, 0.55)); 
   backdrop-filter: blur(var(--content-blur, 3px)); 
-  overflow-y: auto;
-  overflow-y: auto;
   transition: opacity 0.5s ease;
   
   /* Dark Glass Style Overrides */
   background-color: rgba(0, 0, 0, var(--content-bg-opacity, 0.4)); 
   color: #ffffff;
+}
+
+.content-scroll-wrapper {
+  margin-top: 32px;
+  height: calc(100% - 32px);
+  overflow-y: auto;
+  padding: 20px;
 }
 
 /* Glassmorphism for Element Plus Components */
