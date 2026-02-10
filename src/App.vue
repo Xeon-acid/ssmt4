@@ -140,7 +140,7 @@ html, body {
   margin-top: 0;
   height: 100%;
   overflow-y: auto;
-  padding: 24px; /* Added spacing to prevent content from touching edges */
+  padding: 24px 24px 56px 24px; /* Added extra bottom padding (TitleBar height 32px) to prevent content cutoff */
   box-sizing: border-box; /* Ensures padding doesn't cause overflow */
 }
 

@@ -48,7 +48,7 @@ const handleGameSelect = (game: any) => {
     height: 100%; /* Constrain height to viewport to enable internal scrolling */
     box-sizing: border-box;
     padding-top: 60px; /* TitleBar Safe Area */
-    padding-bottom: 40px;
+    padding-bottom: 72px; /* Increased bottom padding (40px + 32px TitleBar height) */
     
     /* Background moved to App.vue for global coverage including TitleBar */
     background: transparent; 
