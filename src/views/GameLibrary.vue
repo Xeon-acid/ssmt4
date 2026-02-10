@@ -1,34 +1,389 @@
 <script setup lang="ts">
 import { gamesList, switchToGame, appSettings } from '../store';
 import { useRouter } from 'vue-router';
+import { reactive, type CSSProperties, ref } from 'vue';
 
-// We can choose to keep the button navigation separate, 
-// or allow clicking a game to "launch" it (which usually implies going to the workspace or just running it).
-// The user request didn't specify what happens on click, but "switching to game" usually implies context switch.
-// I'll stick to just setting active game. If they want to nav, they can use the TitleBar button or I can add nav.
-// Usually a launcher goes to "details" or "dashboard" after selection.
-// For now: Select + Switch to Workbench seems logical for a successful "Pick".
 const router = useRouter();
 
-const handleGameSelect = (game: any) => {
+// Reactive styles for animation
+const cardStyles = reactive<Record<string, CSSProperties>>({});
+
+// Animation Timer Management
+let animationTimers: any[] = [];
+const clearTimers = () => { 
+    animationTimers.forEach(id => clearTimeout(id)); 
+    animationTimers = []; 
+};
+const addTimer = (callback: () => void, delay: number) => {
+    const id = setTimeout(callback, delay);
+    animationTimers.push(id);
+    return id;
+};
+
+// Love Particle System
+interface Particle {
+    id: number;
+    x: number;
+    y: number;
+    text: string;
+    style: CSSProperties;
+}
+const particles = ref<Particle[]>([]);
+let particleId = 0;
+const colors = ['#ff7eb3', '#ff758c', '#ff7eb3', '#fgbdff', '#ff9999', '#ffffff'];
+
+// Background Hearts
+interface BgHeart {
+    id: number;
+    x: number;
+    y: number;
+    size: number;
+    rotation: number;
+    color: string;
+    opacity: number;
+}
+const bgHearts = ref<BgHeart[]>([]);
+
+// Meteor Star System
+interface MeteorStar {
+    id: number;
+    x: number;     // Start X
+    y: number;     // Start Y
+    tx: number;    // Translate X
+    ty: number;    // Translate Y
+    angle: number; // Movement angle for tail rotation
+    color: string;
+    emoji: string; // New: Random Emoji
+    rotationDuration: string;
+    flickerDuration: string; // New: Flicker speed
+    flyDuration: string; 
+    size: number;
+    // opacity removed
+    trail: Array<{ x: number, y: number, s: number, o: number }>; 
+}
+const meteorStars = ref<MeteorStar[]>([]);
+let meteorId = 0;
+const starColors = ['#ff0000', '#ffaf00', '#ffff00', '#00ff00', '#0000ff', '#4b0082', '#8f00ff', '#ff00ff', '#00ffff'];
+const meteorEmojis = ['⭐', '🌟', '💫', '✨', '☄️', '🪐', '🦄', '🌈', '🍭', '🌸', '🍩', '🍪', '🍕', '🚀', '🛸', '🧚', '💎', '🍄', '🐱', '🐶'];
+
+const consecutiveClickCount = ref(0);
+const lastClickedGameId = ref('');
+
+const spawnMeteorStars = () => {
+    // Spawn a few stars to create a "shower" feel
+    const count = 3 + Math.floor(Math.random() * 4); 
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    
+    for (let i = 0; i < count; i++) {
+        // Pick a random start edge
+        const edge = Math.floor(Math.random() * 4);
+        let startX = 0, startY = 0;
+        let endX = 0, endY = 0;
+        
+        switch(edge) {
+            case 0: // Top -> Bottom
+                startX = Math.random() * w; startY = -80; endX = Math.random() * w; endY = h + 150; break;
+            case 1: // Right -> Left
+                startX = w + 80; startY = Math.random() * h; endX = -150; endY = Math.random() * h; break;
+            case 2: // Bottom -> Top
+                startX = Math.random() * w; startY = h + 80; endX = Math.random() * w; endY = -150; break;
+            case 3: // Left -> Right
+                startX = -80; startY = Math.random() * h; endX = w + 150; endY = Math.random() * h; break;
+        }
+
+        // Calculate relative translation
+        const tx = endX - startX;
+        const ty = endY - startY;
+        const angle = Math.atan2(ty, tx);
+
+        // Speed: 1.2s - 2.5s
+        const durationSec = 1.2 + Math.random() * 1.3;
+
+        const ms: MeteorStar = {
+            id: meteorId++,
+            x: startX,
+            y: startY,
+            tx,
+            ty,
+            angle,
+            color: starColors[Math.floor(Math.random() * starColors.length)],
+            emoji: meteorEmojis[Math.floor(Math.random() * meteorEmojis.length)],
+            rotationDuration: `${0.2 + Math.random() * 0.3}s`, // Fast Spin
+            flickerDuration: `${0.1 + Math.random() * 0.2}s`, // Fast Flicker
+            flyDuration: `${durationSec}s`,
+            size: 24 + Math.random() * 32, 
+            trail: [] // Empty
+        };
+
+        meteorStars.value.push(ms);
+        
+        // Remove after animation
+        setTimeout(() => {
+            meteorStars.value = meteorStars.value.filter(s => s.id !== ms.id);
+        }, durationSec * 1000 + 100); 
+    }
+};
+
+const handleGameSelect = (game: any, event: MouseEvent) => {
+    // 0. Track Consecutive Clicks
+    if (lastClickedGameId.value === game.name) {
+        consecutiveClickCount.value++;
+    } else {
+        lastClickedGameId.value = game.name;
+        consecutiveClickCount.value = 1;
+    }
+
+    // Trigger Meteor Shower if 3+ clicks
+    if (consecutiveClickCount.value >= 3) {
+        spawnMeteorStars();
+    }
+
+    // If detecting consecutive click on already selected item
+    if (appSettings.currentConfigName === game.name) {
+        spawnLoveExplosion(event);
+    }
+    
+    // Always switch (or refresh) and trigger animations
     switchToGame(game);
-    // Optional: Auto-navigate to workbench after selection? 
-    // The previous logic was "keep drawer open for a moment".
-    // I'll stay on page to allow browsing, unless user wants otherwise.
-    // Actually, "Drawer" implies temporary. "Page" implies persistent.
-    // I'll just set the cached game.
+    
+    // Clear any pending return/cleanup timers to prevent conflict/snapping
+    clearTimers();
+    
+    // Animate others being "blown away"
+    const others = gamesList.filter(g => g.name !== game.name);
+    
+    // 1. Others: Blast away + Gray out
+    others.forEach(g => {
+        // If already blown away (and not returning), maintain current momentum/position
+        const current = cardStyles[g.name];
+        const isAlreadyOut = current && current.transform && !(current.transform as string).includes('translate(0, 0)');
+
+        if (!isAlreadyOut) {
+            // Random direction (complete 360 scatter)
+            const angle = Math.random() * Math.PI * 2;
+            const distance = 600 + Math.random() * 900;
+            
+            const tx = Math.cos(angle) * distance;
+            const ty = Math.sin(angle) * distance;
+            
+            // Random rotation for chaotic effect
+            const rot = (Math.random() - 0.5) * 180; 
+
+            cardStyles[g.name] = {
+                transform: `translate(${tx}px, ${ty}px) rotate(${rot}deg) scale(0.5)`,
+                opacity: '0.4', // Fade slightly
+                filter: 'grayscale(1) brightness(0.5)', // Turn gray and dark
+                // Fast, explosive movement out
+                transition: 'transform 0.4s cubic-bezier(0.1, 0.9, 0.2, 1), opacity 0.4s ease, filter 0.4s ease'
+            };
+        }
+    });
+
+    // 2. Selected: Instant Pop + Shake Sequence
+    // Phase A: Instant expansion
+    cardStyles[game.name] = {
+        transform: 'scale(1.5)',
+        transition: 'transform 0.1s ease-out',
+        zIndex: '200',
+        filter: 'brightness(1.5)' // Flash bright
+    };
+
+    addTimer(() => {
+        // Phase B: Vibration (Shake)
+        // using animation property
+        cardStyles[game.name] = {
+            animation: 'impactShake 0.3s linear', // defined in CSS
+            zIndex: '200',
+            filter: 'brightness(1.2)'
+        };
+
+        // Phase C: Settle to Active State (Slow shrink)
+        addTimer(() => {
+            cardStyles[game.name] = {
+                transform: 'scale(1.2)',
+                transition: 'transform 0.6s ease-out',
+                zIndex: '200',
+                filter: 'none'
+            };
+            
+            // Cleanup selected after settle
+            addTimer(() => {
+                delete cardStyles[game.name];
+            }, 600);
+            
+        }, 300); // 300ms shake duration
+    }, 100);
+
+    // 3. Others: Schedule return (Traction force)
+    addTimer(() => {
+        others.forEach(g => {
+            cardStyles[g.name] = {
+                transform: 'translate(0, 0) rotate(0deg) scale(1)',
+                opacity: '', // Revert to class-controlled opacity
+                filter: 'grayscale(1) brightness(0.5)', // Keep gray during return!
+                // Elastic/Springy return
+                transition: 'transform 1.0s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.8s ease'
+            };
+        });
+
+        // 4. Others: Recover color with random delay (GRADUAL FADE IN)
+        addTimer(() => {
+            others.forEach(g => {
+                const randomDelay = Math.random() * 1000; // 0-1s random delay
+                addTimer(() => {
+                    // Transition to color (restore to default dim state)
+                    cardStyles[g.name] = {
+                         // Ensure we don't jump positions if they are still settling
+                         transform: 'translate(0, 0) rotate(0deg) scale(1)', 
+                         filter: 'grayscale(0.2) brightness(0.7)',
+                         transition: 'filter 1.5s ease-in-out' // Smooth color transition
+                    };
+                    
+                    // Final cleanup
+                    addTimer(() => {
+                        delete cardStyles[g.name]; 
+                    }, 1500);
+                }, randomDelay);
+            });
+        }, 1000); // Wait for return transition
+    }, 350); // Wait for blast
+};
+
+const spawnLoveExplosion = (e: MouseEvent) => {
+    // Determine coordinates based on click event source, or just use mouse position
+    const x = e.clientX;
+    const y = e.clientY;
+
+    // 1. Background Giant Heart
+    bgHearts.value.push({
+        id: particleId++,
+        x: x, 
+        y: y,
+        size: 300 + Math.random() * 300, // 300-600px
+        rotation: (Math.random() - 0.5) * 60,
+        color: '#ff7eb3',
+        opacity: 0.1 + Math.random() * 0.2 // Random opacity
+    });
+    // Remove bg heart after animation
+    setTimeout(() => {
+        bgHearts.value.shift();
+    }, 2000);
+
+    // 2. Exploding Particles
+    for (let i = 0; i < 15; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const velocity = 100 + Math.random() * 200;
+        const tx = Math.cos(angle) * velocity;
+        const ty = Math.sin(angle) * velocity;
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const kaomojisArr = [
+            '(｡♥‿♥｡)', '( ˘ ³˘)♥', 'OwO', 'UwU', '(*♡∀♡)', 
+            '(◕‿◕✿)', '♥', '❤', '❥', '(≧◡≦)', '(>ω<)', 
+            'Ciallo～(∠・ω< )⌒☆', 'Ciallo', '(∠・ω< )⌒★', 
+            '(・ω< )', '☆⌒(ゝ。∂)', '(★^O^★)'
+        ];
+        const text = kaomojisArr[Math.floor(Math.random() * kaomojisArr.length)];
+        
+        const p: Particle = {
+            id: particleId++,
+            x: x,
+            y: y,
+            text: text,
+            style: {
+                '--tx': `${tx}px`,
+                '--ty': `${ty}px`,
+                color: color,
+                fontSize: `${12 + Math.random() * 16}px`,
+                fontWeight: 'bold',
+                textShadow: '0 0 5px rgba(255,100,100,0.5)'
+            } as CSSProperties
+        };
+        
+        particles.value.push(p);
+        
+        // Remove particle
+        setTimeout(() => {
+            particles.value = particles.value.filter(item => item.id !== p.id);
+        }, 1500);
+    }
 };
 </script>
 
 <template>
     <div class="game-library-container">
+        <!-- Background Effects Layer -->
+        <div class="effects-layer">
+            <div 
+                v-for="h in bgHearts" 
+                :key="h.id" 
+                class="bg-heart"
+                :style="{
+                    left: h.x + 'px',
+                    top: h.y + 'px',
+                    width: h.size + 'px',
+                    height: h.size + 'px',
+                    transform: `translate(-50%, -50%) rotate(${h.rotation}deg)`,
+                    opacity: h.opacity
+                }"
+            >
+                <svg viewBox="0 0 32 29.6" fill="currentColor">
+                    <path d="M23.6,0c-3.4,0-6.3,2.7-7.6,5.6C14.7,2.7,11.8,0,8.4,0C3.8,0,0,3.8,0,8.4c0,9.4,9.5,11.9,16,21.2
+                    c6.1-9.3,16-11.8,16-21.2C32,3.8,28.2,0,23.6,0z"/>
+                </svg>
+            </div>
+        </div>
+
+        <!-- Meteor Star Layer -->
+        <div class="meteor-layer">
+            <div 
+                v-for="s in meteorStars" 
+                :key="s.id" 
+                class="meteor-star-wrapper"
+                :style="{
+                    left: s.x + 'px',
+                    top: s.y + 'px',
+                    '--tx': s.tx + 'px',
+                    '--ty': s.ty + 'px',
+                    animationDuration: s.flyDuration
+                } as any"
+            >
+                <div 
+                    class="meteor-star-inner"
+                    :style="{
+                        color: s.color,
+                        fontSize: s.size + 'px',
+                        animation: `starSpin ${s.rotationDuration} linear infinite, starFlicker ${s.flickerDuration} ease-in-out infinite alternate`,
+                        textShadow: `0 0 10px ${s.color}`
+                    }"
+                >{{ s.emoji }}</div>
+            </div>
+        </div>
+
+        <!-- Particle Layer -->
+        <div class="particles-layer">
+             <div 
+                v-for="p in particles" 
+                :key="p.id" 
+                class="love-particle"
+                :style="{
+                    left: p.x + 'px',
+                    top: p.y + 'px',
+                    ...p.style
+                }"
+            >
+                {{ p.text }}
+            </div>
+        </div>
+
         <div class="games-grid">
             <div 
                 v-for="game in gamesList" 
                 :key="game.name"
                 class="game-card"
                 :class="{ active: appSettings.currentConfigName === game.name }"
-                @click="handleGameSelect(game)"
+                :style="cardStyles[game.name]"
+                @click="handleGameSelect(game, $event)"
             >
                 <div class="game-icon-wrapper">
                     <img :src="game.iconPath" class="game-icon" alt="icon" />
@@ -55,6 +410,73 @@ const handleGameSelect = (game: any) => {
     
     overflow-y: auto;
     overflow-x: hidden; /* Prevent horizontal scrollbar caused by scaled breathing effects */
+}
+
+/* Meteor Star CSS */
+.meteor-layer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 300; /* Above cards and explosions */
+}
+.meteor-star-wrapper {
+    position: absolute;
+    /* Use ease-in to simulate gravity or accelerating streak currently mapped to flying across whole screen */
+    animation: flyAcross linear forwards; 
+}
+.meteor-star-inner {
+    /* Self-rotation handled by inline style */
+    display: inline-block;
+    width: 100%;
+    height: 100%;
+    line-height: 1;
+    font-weight: bold;
+    transform-origin: 50% 55%; /* Fix visual center rotation */
+    text-align: center;
+}
+.meteor-tail-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    z-index: -1;
+    pointer-events: none;
+}
+.meteor-trail-dot {
+    position: absolute;
+    border-radius: 50%;
+    /* Create a pulsing effect for trail particles */
+    animation: trailPulse 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes flyAcross {
+    to { transform: translate(var(--tx), var(--ty)); }
+}
+@keyframes starSpin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+@keyframes starFlicker {
+    from { opacity: 1; }
+    to { opacity: 0.3; }
+}
+@keyframes trailPulse {
+    from { transform: scale(0.8); opacity: 0.3; }
+    to { transform: scale(1.2); opacity: 0.8; }
+}
+
+/* Keyframes for Impact Shake */
+@keyframes impactShake {
+    0% { transform: scale(1.5) translate(0, 0); }
+    20% { transform: scale(1.5) translate(-4px, 4px); }
+    40% { transform: scale(1.5) translate(4px, -4px); }
+    60% { transform: scale(1.5) translate(-3px, 0); }
+    80% { transform: scale(1.5) translate(3px, 0); }
+    100% { transform: scale(1.5) translate(0, 0); }
 }
 
 /* Custom Scrollbar */
@@ -91,9 +513,10 @@ const handleGameSelect = (game: any) => {
     cursor: pointer;
     transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s ease, filter 0.4s ease;
     width: 110px; /* Slightly larger for grid */
-    opacity: 0.85; /* More visible on page than in drawer */
-    filter: brightness(0.8) grayscale(0.2); 
+    opacity: 0.8; /* Slightly dim (visible but allows active to pop) */
+    filter: brightness(0.7) grayscale(0.2); 
     transform-origin: center center;
+    z-index: 10; /* Ensure cards are above the effects layer */
 }
 
 .game-card:hover {
@@ -137,6 +560,18 @@ const handleGameSelect = (game: any) => {
 
     transition: all 0.2s;
     overflow: hidden;
+    /* Performance: Disable infinite animation on idle */
+    /* animation: crystalPulse 5s ease-in-out infinite; */
+}
+
+.game-card:hover .game-icon-wrapper {
+    animation: crystalPulse 5s ease-in-out infinite;
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.6);
+    box-shadow: 0 0 25px rgba(150, 220, 255, 0.4), inset 0 0 25px rgba(255, 255, 255, 0.3);
+}
+
+.game-card.active .game-icon-wrapper {
     animation: crystalPulse 5s ease-in-out infinite;
 }
 
@@ -168,10 +603,19 @@ const handleGameSelect = (game: any) => {
             rgba(255, 255, 255, 0.05) 200deg,
             transparent 360deg);
     filter: blur(15px);
-    animation: magicRotate 7s linear infinite;
+    /* Performance: Disable infinite animation on idle */
+    /* animation: magicRotate 7s linear infinite; */
     z-index: 2;
     pointer-events: none;
     mix-blend-mode: screen;
+    opacity: 0; /* Hide by default to save blend cost */
+    transition: opacity 0.3s;
+}
+
+.game-card:hover .game-icon-wrapper::before,
+.game-card.active .game-icon-wrapper::before {
+    opacity: 1;
+    animation: magicRotate 7s linear infinite;
 }
 
 @keyframes magicRotate {
@@ -196,6 +640,12 @@ const handleGameSelect = (game: any) => {
     transform: skewX(-20deg);
     pointer-events: none;
     z-index: 5;
+    /* Performance: Disable infinite animation on idle */
+    /* animation: subtleSheen 6s ease-in-out infinite; */
+}
+
+.game-card:hover .game-icon-wrapper::after,
+.game-card.active .game-icon-wrapper::after {
     animation: subtleSheen 6s ease-in-out infinite;
 }
 
@@ -206,16 +656,12 @@ const handleGameSelect = (game: any) => {
 }
 
 .game-card:hover .game-icon-wrapper::after {
-    left: 150%;
-    transition: none; /* Reset for hover effect if needed, but keeping animation is fine */
+    /* Override animation for hover specific behavior if needed, otherwise use keyframes above */
+    animation: subtleSheen 2s ease-in-out infinite; /* Faster sheen on hover */
 }
 
-/* Stronger hover effects */
-.game-card:hover .game-icon-wrapper {
-    transform: translateY(-2px);
-    border-color: rgba(255, 255, 255, 0.6);
-    box-shadow: 0 0 25px rgba(150, 220, 255, 0.4), inset 0 0 25px rgba(255, 255, 255, 0.3);
-}
+/* Stronger hover effects - merged with .game-card:hover .game-icon-wrapper rule above */
+/* .game-card:hover .game-icon-wrapper { ... } */
 
 .game-card.active {
     opacity: 1;
@@ -303,5 +749,41 @@ const handleGameSelect = (game: any) => {
     text-overflow: ellipsis;
     border-bottom-left-radius: 14px;
     border-bottom-right-radius: 14px;
+}
+
+/* Animations and Layers */
+.effects-layer, .particles-layer {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    pointer-events: none;
+    z-index: 5; /* Below game cards (z-index 10) but above background */
+    overflow: hidden;
+}
+
+.bg-heart {
+    position: absolute;
+    color: #ff7eb3;
+    animation: bgHeartFade 2s ease-out forwards;
+    filter: blur(5px);
+}
+
+@keyframes bgHeartFade {
+    0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+    20% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); }
+    100% { transform: translate(-50%, -50%) scale(1.5); opacity: 0; }
+}
+
+.love-particle {
+    position: absolute;
+    pointer-events: none;
+    animation: particleFly 1.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    white-space: nowrap;
+}
+
+@keyframes particleFly {
+    0% { transform: translate(-50%, -50%) scale(0); opacity: 1; }
+    50% { opacity: 1; }
+    100% { transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1.5); opacity: 0; }
 }
 </style>
