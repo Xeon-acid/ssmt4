@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { ref, watch, reactive } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
+import { ask, open } from '@tauri-apps/plugin-dialog';
+import { openPath } from '@tauri-apps/plugin-opener'; // Updated import
+import { join } from '@tauri-apps/api/path';
+import { loadGames, appSettings } from '../store'; // Need to reload games list to see new configs
 
 const props = defineProps<{
   modelValue: boolean;
@@ -14,17 +18,46 @@ const emit = defineEmits<{
 // Config State
 interface GameConfig {
   basic: {
+    // configName is kept in UI state but separate from the object sent to backend
     gamePreset: string;
+    backgroundType?: 'image' | 'video';
   };
-  threeDMigoto: any;
+  threeDMigoto: {
+      installDir: string;
+      targetExePath: string;
+      launcherExePath: string;
+      launchArgs: string;
+      showErrorPopup: boolean;
+      autoSetAnalyseOptions: boolean;
+      useShell: boolean;
+      useUpx: boolean;
+      delay: number;
+      autoExitSeconds: number;
+      extraDll: string;
+  };
   other: any;
 }
 
 const config = reactive<GameConfig>({
-  basic: { gamePreset: 'Default' },
-  threeDMigoto: {},
+  basic: { gamePreset: 'Default', backgroundType: 'image' },
+  threeDMigoto: {
+      installDir: '',
+      targetExePath: '',
+      launcherExePath: '',
+      launchArgs: '',
+      showErrorPopup: true,
+      autoSetAnalyseOptions: true,
+      useShell: false,
+      useUpx: false,
+      delay: 0,
+      autoExitSeconds: 0,
+      extraDll: ''
+  },
   other: {}
 });
+
+const configName = ref(''); // Separate UI state for the folder name
+
 
 const isLoading = ref(false);
 
@@ -37,10 +70,25 @@ const tabs = [
 ];
 
 const presetOptions = [
-  { label: '预设 (Default)', value: 'Default' },
-  { label: '高画质 (High)', value: 'High' },
-  { label: '低画质 (Low)', value: 'Low' },
-  { label: '自定义 (Custom)', value: 'Custom' },
+  { label: 'GIMI', value: 'GIMI' },
+  { label: 'HIMI', value: 'HIMI' },
+  { label: 'SRMI', value: 'SRMI' },
+  { label: 'ZZMI', value: 'ZZMI' },
+  { label: 'WWMI', value: 'WWMI' },
+  { label: 'EFMI', value: 'EFMI' },
+  { label: 'GF2', value: 'GF2' },
+  { label: 'IdentityVNeoX2', value: 'IdentityVNeoX2' },
+  { label: 'IdentityVNeoX3', value: 'IdentityVNeoX3' },
+  { label: 'AILIMIT', value: 'AILIMIT' },
+  { label: 'DOAV', value: 'DOAV' },
+  { label: 'MiSide', value: 'MiSide' },
+  { label: 'SnowBreak', value: 'SnowBreak' },
+  { label: 'Strinova', value: 'Strinova' },
+  { label: 'Nioh2', value: 'Nioh2' },
+  { label: 'YYSLS', value: 'YYSLS' },
+  { label: 'WuWa', value: 'WuWa' },
+  { label: 'AEMI', value: 'AEMI' },
+  { label: 'DIY', value: 'DIY' },
 ];
 
 // Load/Save Logic
@@ -50,9 +98,38 @@ const loadConfig = async () => {
   try {
     const data = await invoke<GameConfig>('load_game_config', { gameName: props.gameName });
     // Merge
-    config.basic = data.basic || { gamePreset: 'Default' };
-    config.threeDMigoto = data.threeDMigoto || {};
+    config.basic = {
+        gamePreset: data.basic.gamePreset || 'Default',
+        backgroundType: (data.basic as any).backgroundType || 'image'
+    };
+    
+    const t = data.threeDMigoto || {};
+    config.threeDMigoto = {
+        installDir: t.installDir || '',
+        targetExePath: t.targetExePath || '',
+        launcherExePath: t.launcherExePath || '',
+        launchArgs: t.launchArgs || '',
+        showErrorPopup: t.showErrorPopup !== undefined ? t.showErrorPopup : true,
+        autoSetAnalyseOptions: t.autoSetAnalyseOptions !== undefined ? t.autoSetAnalyseOptions : true,
+        useShell: t.useShell || false,
+        useUpx: t.useUpx || false,
+        delay: t.delay || 0,
+        autoExitSeconds: t.autoExitSeconds || 0,
+        extraDll: t.extraDll || ''
+    };
+    
+    // Default Logic for installDir if empty on first load (user requirement)
+    if (!config.threeDMigoto.installDir && appSettings.cacheDir) {
+        try {
+            // "SSMT Cache/3Dmigoto/GameName"
+            config.threeDMigoto.installDir = await join(appSettings.cacheDir, '3Dmigoto', props.gameName);
+        } catch (err) {
+            console.error('Failed to construct default 3dmigoto path', err);
+        }
+    }
+
     config.other = data.other || {};
+    // Note: configName is NOT set from file, but from props
   } catch (e) {
     console.error('Failed to load game config:', e);
   } finally {
@@ -73,10 +150,171 @@ const saveConfig = async () => {
   }
 };
 
+const selectIcon = async () => {
+    try {
+        const file = await open({
+            multiple: false,
+            filters: [{ name: 'Images', extensions: ['png'] }]
+        });
+        
+        if (file) {
+             await invoke('set_game_icon', { 
+                gameName: props.gameName, 
+                filePath: file 
+            });
+            await loadGames();
+        }
+    } catch (e) {
+        console.error(e);
+    }
+};
+
+const selectBackground = async () => {
+    try {
+        const isVideo = config.basic.backgroundType === 'video';
+        const filters = isVideo 
+            ? [{ name: 'Videos', extensions: ['mp4', 'webm'] }]
+            : [{ name: 'Images', extensions: ['png', 'webp'] }];
+            
+        const file = await open({
+            multiple: false,
+            filters
+        });
+        
+        if (file) {
+            await invoke('set_game_background', { 
+                gameName: props.gameName, 
+                filePath: file,
+                bgType: config.basic.backgroundType 
+            });
+            await loadGames(); // Refresh
+        }
+    } catch (e) {
+        console.error(e);
+    }
+};
+
+// 3Dmigoto Helper Functions
+const pick3dmigotoDir = async () => {
+    try {
+        const selected = await open({
+            directory: true,
+            multiple: false,
+            title: '选择3Dmigoto所在目录'
+        });
+        if (selected && typeof selected === 'string') {
+            config.threeDMigoto.installDir = selected;
+        }
+    } catch (e) { console.error(e); }
+};
+
+const open3dmigotoDir = async () => {
+    if (config.threeDMigoto.installDir) {
+        try {
+            await invoke('ensure_directory', { path: config.threeDMigoto.installDir });
+            await invoke('open_in_explorer', { path: config.threeDMigoto.installDir });
+        } catch (e) {
+             console.error('Failed to open dir:', e);
+        }
+    }
+};
+
+const pickExe = async (field: 'targetExePath' | 'launcherExePath') => {
+    try {
+        const selected = await open({
+            multiple: false,
+            filters: [{ name: 'Executables', extensions: ['exe'] }],
+            title: '选择可执行文件'
+        });
+        if (selected && typeof selected === 'string') {
+            config.threeDMigoto[field] = selected;
+        }
+    } catch (e) { console.error(e); }
+};
+
+const openExeDir = async (field: 'targetExePath' | 'launcherExePath') => {
+    const path = config.threeDMigoto[field];
+    if (path) {
+        try {
+           const lastSlash = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+           if (lastSlash > -1) {
+               const dir = path.substring(0, lastSlash);
+               await invoke('ensure_directory', { path: dir });
+               await invoke('open_in_explorer', { path: dir });
+           }
+        } catch (e) { console.error(e); }
+    }
+};
+
+const pickDll = async () => {
+    try {
+        const selected = await open({
+             multiple: false,
+            filters: [{ name: 'DLL', extensions: ['dll'] }],
+            title: '选择DLL文件'
+        });
+        if (selected && typeof selected === 'string') {
+            config.threeDMigoto.extraDll = selected;
+        }
+    } catch (e) { console.error(e); }
+};
+
+const createNewConfig = async () => {
+  if (!configName.value) return;
+  
+  const yes = await ask(`确定要创建新配置 "${configName.value}" 吗？`, {
+    title: '创建确认',
+    kind: 'info',
+  });
+  if (!yes) return;
+
+  try {
+    isLoading.value = true;
+    await invoke('create_new_config', { 
+      newName: configName.value, 
+      config: config 
+    });
+    console.log('Created new config:', configName.value);
+    
+    // Refresh games list and close
+    await loadGames();
+    close(); 
+  } catch (e) {
+    console.error('Failed to create new config:', e);
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+const deleteCurrentConfig = async () => {
+  if (!props.gameName) return;
+  
+  const yes = await ask(`确定要删除配置 "${props.gameName}" 吗？此操作不可逆。`, {
+    title: '删除确认',
+    kind: 'warning',
+  });
+  if (!yes) return;
+  
+  try {
+    isLoading.value = true;
+    await invoke('delete_game_config_folder', { gameName: props.gameName });
+    console.log('Deleted config:', props.gameName);
+    
+    // Refresh games list and close
+    await loadGames();
+    close();
+  } catch (e) {
+    console.error('Failed to delete config:', e);
+  } finally {
+    isLoading.value = false;
+  }
+};
+
 // Open/Close
 watch(() => props.modelValue, (val) => {
   if (val) {
     activeTab.value = 'basic'; // Reset to first tab
+    configName.value = props.gameName; // Initialize config name from current game
     loadConfig();
   } else {
     // When closing, save
@@ -124,6 +362,25 @@ const close = () => {
             <!-- Basic Settings -->
             <div v-if="activeTab === 'basic'" class="tab-pane">
               <div class="setting-group">
+                <div class="setting-label">配置名称 (文件夹名)</div>
+                <input 
+                  v-model="configName" 
+                  type="text" 
+                  class="custom-input" 
+                  placeholder="请输入配置名称"
+                />
+                
+                <div class="button-row">
+                  <button class="action-btn create" @click="createNewConfig">
+                    以此名称创建新配置
+                  </button>
+                  <button class="action-btn delete" @click="deleteCurrentConfig">
+                    删除当前配置
+                  </button>
+                </div>
+              </div>
+
+              <div class="setting-group">
                 <div class="setting-label">游戏预设</div>
                 <el-select v-model="config.basic.gamePreset" placeholder="Select" class="custom-select">
                   <el-option
@@ -134,11 +391,109 @@ const close = () => {
                   />
                 </el-select>
               </div>
+
+              <div class="setting-group">
+                <div class="setting-label">游戏图标</div>
+                <button class="action-btn" @click="selectIcon">选择图标文件 (.png)</button>
+              </div>
+
+               <div class="setting-group">
+                <div class="setting-label">背景设置</div>
+                <div style="margin-bottom: 10px;">
+                  <el-radio-group v-model="config.basic.backgroundType">
+                    <el-radio value="image" label="image">图片</el-radio>
+                    <el-radio value="video" label="video">视频</el-radio>
+                  </el-radio-group>
+                </div>
+                <!-- Separate check: if video, show video file btn, if image, show image file btn -->
+                <button class="action-btn" @click="selectBackground">
+                   {{ config.basic.backgroundType === 'video' ? '选择背景视频' : '选择背景图片' }}
+                </button>
+              </div>
             </div>
 
             <!-- 3Dmigoto Settings -->
             <div v-if="activeTab === '3dmigoto'" class="tab-pane">
-              <div class="empty-state">暂无设置项</div>
+              
+              <div class="setting-group">
+                <div class="setting-label">3Dmigoto 目录</div>
+                <input v-model="config.threeDMigoto.installDir" type="text" class="custom-input" placeholder="请选择或输入目录" />
+                <div class="button-row">
+                  <button class="action-btn" @click="pick3dmigotoDir">选择文件夹</button>
+                  <button class="action-btn" @click="open3dmigotoDir">打开文件夹</button>
+                </div>
+              </div>
+
+              <div class="setting-group">
+                 <div class="setting-label">目标进程路径 (Target Exe)</div>
+                 <input v-model="config.threeDMigoto.targetExePath" type="text" class="custom-input" placeholder="选择游戏主程序" />
+                 <div class="button-row">
+                  <button class="action-btn" @click="pickExe('targetExePath')">选择文件</button>
+                  <button class="action-btn" @click="openExeDir('targetExePath')">打开所在位置</button>
+                 </div>
+              </div>
+
+               <div class="setting-group">
+                 <div class="setting-label">启动器路径 (Launcher Exe)</div>
+                 <input v-model="config.threeDMigoto.launcherExePath" type="text" class="custom-input" placeholder="选择启动器 (可选)" />
+                 <div class="button-row">
+                  <button class="action-btn" @click="pickExe('launcherExePath')">选择文件</button>
+                  <button class="action-btn" @click="openExeDir('launcherExePath')">打开所在位置</button>
+                 </div>
+              </div>
+
+              <div class="setting-group">
+                <div class="setting-label">启动参数</div>
+                <input v-model="config.threeDMigoto.launchArgs" type="text" class="custom-input" placeholder="例如: -popupwindow" />
+              </div>
+
+              <div class="setting-checkbox-row">
+                 <label class="checkbox-label">
+                    <input type="checkbox" v-model="config.threeDMigoto.showErrorPopup" />
+                    显示左上角报错 (Error Popup)
+                 </label>
+              </div>
+
+              <div class="setting-checkbox-row">
+                 <label class="checkbox-label">
+                    <input type="checkbox" v-model="config.threeDMigoto.autoSetAnalyseOptions" />
+                    自动设置 analyse_options
+                 </label>
+              </div>
+
+               <div class="setting-checkbox-row">
+                 <label class="checkbox-label">
+                    <input type="checkbox" v-model="config.threeDMigoto.useShell" />
+                    使用 Shell 方式运行
+                 </label>
+              </div>
+
+               <div class="setting-checkbox-row">
+                 <label class="checkbox-label">
+                    <input type="checkbox" v-model="config.threeDMigoto.useUpx" />
+                    使用 UPX 默认选项加壳
+                 </label>
+              </div>
+              
+              <div class="flex-row">
+                  <div class="setting-group half-width">
+                    <div class="setting-label">d3d11.dll 延迟 (Delay ms)</div>
+                    <input v-model.number="config.threeDMigoto.delay" type="number" class="custom-input" />
+                  </div>
+                   <div class="setting-group half-width">
+                    <div class="setting-label">自动退出秒数 (Auto Exit s)</div>
+                    <input v-model.number="config.threeDMigoto.autoExitSeconds" type="number" class="custom-input" />
+                  </div>
+              </div>
+
+               <div class="setting-group">
+                 <div class="setting-label">额外注入 DLL</div>
+                 <input v-model="config.threeDMigoto.extraDll" type="text" class="custom-input" placeholder="选择或者留空" />
+                 <div class="button-row">
+                  <button class="action-btn" @click="pickDll">选择文件</button>
+                 </div>
+              </div>
+
             </div>
 
             <!-- Other Settings -->
@@ -182,6 +537,28 @@ const close = () => {
 @keyframes slideUp {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+.setting-checkbox-row {
+  margin-bottom: 12px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: white;
+  cursor: pointer;
+  user-select: none;
+}
+
+.flex-row {
+  display: flex;
+  gap: 16px;
+}
+
+.half-width {
+  flex: 1;
 }
 
 /* Sidebar */
@@ -276,6 +653,63 @@ const close = () => {
   font-size: 14px;
   color: rgba(255, 255, 255, 0.8);
   margin-bottom: 8px;
+}
+
+.custom-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 8px 12px;
+  color: #fff;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.custom-input:focus {
+  border-color: #F7CE46;
+}
+
+.button-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.action-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  flex: 1;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.action-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.action-btn.create {
+  background: rgba(247, 206, 70, 0.2);
+  border: 1px solid rgba(247, 206, 70, 0.4);
+  color: #F7CE46;
+}
+.action-btn.create:hover {
+  background: rgba(247, 206, 70, 0.3);
+}
+
+.action-btn.delete {
+  background: rgba(232, 17, 35, 0.2);
+  border: 1px solid rgba(232, 17, 35, 0.4);
+  color: #ff6b6b;
+}
+.action-btn.delete:hover {
+  background: rgba(232, 17, 35, 0.3);
 }
 
 .empty-state {

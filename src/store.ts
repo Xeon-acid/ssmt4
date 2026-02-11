@@ -24,16 +24,17 @@ export interface GameInfo {
   iconPath: string;
   bgPath: string;
   bgVideoPath?: string;
+  bgType?: 'image' | 'video'; // Add this
   rawIcon?: string;
-  rawBg?: string;
+  rawBg?: string;  
   rawBgVideo?: string;
   showSidebar: boolean;
 }
 
 const defaultSettings: AppSettings = {
   bgType: 'image',
-  bgImage: '/background.png',
-  bgVideo: '/background.webm',
+  bgImage: '',
+  bgVideo: '',
   sidebarOpacity: 0.3, // Lower default for dark theme transparency
   sidebarBlur: 20,
   contentOpacity: 0.2, // Lower default for dark theme transparency
@@ -81,9 +82,10 @@ export async function loadGames() {
       const rawBg = (g as any).bg_path || (g as any).bgPath || '';
       const rawBgVideo = (g as any).bgVideoPath || (g as any).bg_video_path || '';
       
-      const icon = rawIcon ? convertFileSrc(rawIcon) : '';
-      const bg = rawBg ? convertFileSrc(rawBg) : '';
-      const bgVideo = rawBgVideo ? convertFileSrc(rawBgVideo) : '';
+      const timestamp = Date.now();
+      const icon = rawIcon ? convertFileSrc(rawIcon) + `?t=${timestamp}` : '';
+      const bg = rawBg ? convertFileSrc(rawBg) + `?t=${timestamp}` : '';
+      const bgVideo = rawBgVideo ? convertFileSrc(rawBgVideo) + `?t=${timestamp}` : '';
       
       console.log('[store] game paths', g.name, { rawIcon, icon, rawBg, bg, rawBgVideo });
       return {
@@ -91,6 +93,7 @@ export async function loadGames() {
         iconPath: icon,
         bgPath: bg,
         bgVideoPath: bgVideo,
+        bgType: (g as any).bgType || 'image',
         rawIcon: rawIcon,
         rawBg: rawBg,
         rawBgVideo: rawBgVideo,
@@ -98,7 +101,15 @@ export async function loadGames() {
       } as GameInfo;
     });
         
-        gamesList.splice(0, gamesList.length, ...processed);
+    gamesList.splice(0, gamesList.length, ...processed);
+    
+    // Refresh current game background if it exists (force update timestamps)
+    if (appSettings.currentConfigName) {
+        const current = gamesList.find(g => g.name === appSettings.currentConfigName);
+        if (current) {
+            switchToGame(current);
+        }
+    }
     } catch (e) {
         console.error('Failed to scan games:', e);
     }
@@ -107,27 +118,15 @@ export async function loadGames() {
 export function switchToGame(game: GameInfo) {
     appSettings.currentConfigName = game.name;
 
-    // Check if we should stay in video mode
-    if (appSettings.bgType === 'video') {
-        // Only switch if the game has a valid video background
-        if (game.rawBgVideo) {
-            appSettings.bgVideo = convertFileSrc(game.rawBgVideo);
-            // Explicitly stay in video mode (though already is)
-            appSettings.bgType = 'video';
-        } else {
-             // Do nothing means keep previous video.
-             // "Don't switch to corresponding background image unless..."
-             console.log(`[Store] Keeping previous video for ${game.name} because it has no video bg.`);
-        }
+    // Determine type based on game config
+    const useVideo = game.bgType === 'video';
+    
+    if (useVideo && game.bgVideoPath) {
+         appSettings.bgType = 'video';
+         appSettings.bgVideo = game.bgVideoPath;
     } else {
-        // Not in video mode, use standard behavior (switch to image)
-        appSettings.bgType = 'image';
-        // Prefer storing raw filesystem path in settings (avoid saving converted asset URL)
-        // If rawBg is available use it; otherwise fall back to bgPath
-        // @ts-ignore
-        const rawBg = (game as any).rawBg || '';
-        // convert raw fs path to asset url if present, otherwise reuse pre-converted bgPath
-        appSettings.bgImage = rawBg ? convertFileSrc(rawBg) : (game.bgPath || '');
+         appSettings.bgType = 'image';
+         appSettings.bgImage = game.bgPath || '';
     }
 }
 

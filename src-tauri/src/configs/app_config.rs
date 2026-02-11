@@ -24,8 +24,8 @@ impl Default for AppConfig {
     fn default() -> Self {
         Self {
             bg_type: "image".to_string(),
-            bg_image: "/background.png".to_string(), // Keep defaults similar to frontend
-            bg_video: "/background.webm".to_string(),
+            bg_image: "".to_string(), 
+            bg_video: "".to_string(),
             sidebar_opacity: 0.3,
             sidebar_blur: 20.0,
             content_opacity: 0.2,

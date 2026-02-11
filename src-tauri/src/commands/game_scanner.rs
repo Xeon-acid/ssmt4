@@ -11,7 +11,20 @@ pub struct GameInfo {
     pub icon_path: String,
     pub bg_path: String,
     pub bg_video_path: Option<String>,
+    pub bg_type: String, // "image" or "video"
     pub show_sidebar: bool,
+}
+
+#[derive(Deserialize)]
+struct PartialGameConfig {
+    #[serde(default)]
+    basic: PartialBasicSettings,
+}
+
+#[derive(Deserialize, Default)]
+struct PartialBasicSettings {
+    #[serde(default)]
+    background_type: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -100,9 +113,13 @@ pub fn scan_games(app: AppHandle) -> Result<Vec<GameInfo>, String> {
             if path.is_dir() {
                 if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
                     
-                    // 构建图片路径，这里直接使用 path.join
+                    // 构建图片路径
+                    let mut bg_path = path.join("Background.png");
+                    if !bg_path.exists() {
+                        bg_path = path.join("Background.webp");
+                    }
+                    
                     let icon_path = path.join("Icon.png");
-                    let bg_path = path.join("Background.png");
                     
                     // Check for video
                     let mut video_path = path.join("Background.mp4");
@@ -115,17 +132,27 @@ pub fn scan_games(app: AppHandle) -> Result<Vec<GameInfo>, String> {
                         None
                     };
 
+                    // Determine background type from Config.json
+                    let mut bg_type = "image".to_string();
+                    let config_path = path.join("Config.json");
+                    if config_path.exists() {
+                        if let Ok(content) = fs::read_to_string(&config_path) {
+                           if let Ok(config) = serde_json::from_str::<PartialGameConfig>(&content) {
+                               if let Some(t) = config.basic.background_type {
+                                   bg_type = t;
+                               }
+                           }
+                        }
+                    }
+
                     let icon_str = normalize_path(&icon_path);
                     let bg_str = normalize_path(&bg_path);
 
-                    // 不论文件是否存在都加入列表，让前端处理加载失败
-                    // 但可以在这里打印日志方便调试
+                    // 不论文件是否存在都加入列表
                     if !icon_path.exists() {
                         println!("Warning: Icon missing for {}: {:?}", name, icon_path);
                     }
-                    if !bg_path.exists() {
-                        println!("Warning: Background missing for {}: {:?}", name, bg_path);
-                    }
+                    // Background warnings might be spammy if only video exists, but keeps consistent
 
                     // Determine show_sidebar status
                     let show_sidebar = *sidebar_config.get(name).unwrap_or(&false);
@@ -135,6 +162,7 @@ pub fn scan_games(app: AppHandle) -> Result<Vec<GameInfo>, String> {
                         icon_path: icon_str,
                         bg_path: bg_str,
                         bg_video_path: video_str,
+                        bg_type,
                         show_sidebar,
                     });
                 }

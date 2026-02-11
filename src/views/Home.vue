@@ -2,6 +2,8 @@
 import { computed, ref, onMounted, onUnmounted, nextTick } from 'vue'
 import { gamesList, switchToGame, appSettings, loadGames } from '../store' 
 import { invoke } from '@tauri-apps/api/core'
+import { openPath } from '@tauri-apps/plugin-opener'; // Import openPath
+import { join } from '@tauri-apps/api/path';
 import GameSettingsModal from '../components/GameSettingsModal.vue'
 
 // Computed property to get sidebar games (filtered and reverse order)
@@ -56,6 +58,56 @@ const hideGame = async () => {
   }
   
   closeMenu();
+};
+
+const open3dmigotoFolder = async () => {
+    const gameName = appSettings.currentConfigName;
+    if (!gameName || gameName === 'Default') return;
+
+    try {
+        // We need to load the config to find the path
+        const data = await invoke<any>('load_game_config', { gameName });
+        let path = data.threeDMigoto?.installDir;
+        
+        // Default Logic (Must match Modal logic)
+        if (!path && appSettings.cacheDir) {
+            path = await join(appSettings.cacheDir, '3Dmigoto', gameName);
+        }
+
+        if (path) {
+            await invoke('ensure_directory', { path });
+            await invoke('open_in_explorer', { path });
+        } else {
+            console.warn('No 3Dmigoto path found and no cache dir set.');
+        }
+    } catch (e) {
+        console.error('Failed to open 3Dmigoto folder:', e);
+    }
+};
+
+const openD3dxIni = async () => {
+    const gameName = appSettings.currentConfigName;
+    if (!gameName || gameName === 'Default') return;
+
+    try {
+        let path: string | undefined;
+        // Load config to find path
+        const data = await invoke<any>('load_game_config', { gameName });
+        path = data.threeDMigoto?.installDir;
+        
+        // Fallback
+        if (!path && appSettings.cacheDir) {
+            path = await join(appSettings.cacheDir, '3Dmigoto', gameName);
+        }
+
+        if (path) {
+            await invoke('ensure_directory', { path });
+            const iniPath = await join(path, 'd3dx.ini');
+            await invoke('open_in_explorer', { path: iniPath });
+        }
+    } catch (e) {
+        console.error('Failed to open d3dx.ini:', e);
+    }
 };
 
 const showSettings = ref(false);
@@ -139,8 +191,8 @@ onUnmounted(() => {
         <template #dropdown>
           <el-dropdown-menu>
             <el-dropdown-item @click="showSettings = true">游戏设置</el-dropdown-item>
-            <el-dropdown-item>打开3Dmigoto文件夹</el-dropdown-item>
-            <el-dropdown-item>打开d3dx.ini</el-dropdown-item>
+            <el-dropdown-item @click="open3dmigotoFolder">打开3Dmigoto文件夹</el-dropdown-item>
+            <el-dropdown-item @click="openD3dxIni">打开d3dx.ini</el-dropdown-item>
             <el-dropdown-item divided>开启Symlink</el-dropdown-item>
             <el-dropdown-item>关闭Symlink</el-dropdown-item>
             <el-dropdown-item divided>检查3Dmigoto包更新</el-dropdown-item>

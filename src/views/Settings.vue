@@ -44,14 +44,6 @@ const selectCacheDir = async () => {
       </template>
       
       <el-form label-width="140px">
-        <div class="settings-divider">背景设置</div>
-        <el-form-item label="背景类型">
-          <el-select v-model="appSettings.bgType">
-            <el-option label="图片 (Image)" value="image" />
-            <el-option label="视频 (Video)" value="video" />
-          </el-select>
-        </el-form-item>
-        
         <div class="settings-divider">侧边栏样式 (Sidebar)</div>
         <el-form-item label="不透明度 (Opacity)">
           <el-slider v-model="appSettings.sidebarOpacity" :min="0" :max="1" :step="0.01" show-input />

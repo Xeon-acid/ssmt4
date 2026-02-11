@@ -3,10 +3,25 @@ use std::path::PathBuf;
 use tauri::{AppHandle, Manager};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct BasicSettings {
     pub game_preset: String,
+    #[serde(default = "default_bg_type")]
+    pub background_type: String, 
+}
+
+fn default_bg_type() -> String {
+    "image".to_string()
+}
+
+impl Default for BasicSettings {
+    fn default() -> Self {
+        Self {
+            game_preset: "Default".to_string(),
+            background_type: "image".to_string(),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -86,6 +101,104 @@ pub fn save_game_config(app: AppHandle, game_name: String, config: GameConfig) -
         
     fs::write(config_path, content)
         .map_err(|e| format!("Failed to write config: {}", e))?;
+        
+    Ok(())
+}
+
+#[tauri::command]
+pub fn create_new_config(app: AppHandle, new_name: String, config: GameConfig) -> Result<(), String> {
+    // Reuse specific path logic or just construct it
+    // We assume "Games/<new_name>/Config.json"
+    
+    // Find Games dir root
+    let games_root = get_game_config_path(&app, "Dummy").parent().unwrap().parent().unwrap().to_path_buf();
+    
+    let new_dir = games_root.join(&new_name);
+    if !new_dir.exists() {
+        fs::create_dir_all(&new_dir)
+            .map_err(|e| format!("Failed to create directory: {}", e))?;
+    }
+    
+    let config_path = new_dir.join("Config.json");
+    let content = serde_json::to_string_pretty(&config)
+        .map_err(|e| format!("Failed to serialize config: {}", e))?;
+        
+    fs::write(config_path, content)
+        .map_err(|e| format!("Failed to write config: {}", e))?;
+
+    Ok(())
+}
+
+#[tauri::command]
+pub fn delete_game_config_folder(app: AppHandle, game_name: String) -> Result<(), String> {
+    let config_path = get_game_config_path(&app, &game_name);
+    let game_dir = config_path.parent().ok_or("Invalid path")?;
+    
+    if game_dir.exists() {
+        fs::remove_dir_all(game_dir)
+             .map_err(|e| format!("Failed to delete directory: {}", e))?;
+    }
+    
+    Ok(())
+}
+
+#[tauri::command]
+pub fn set_game_background(app: AppHandle, game_name: String, file_path: String, bg_type: String) -> Result<(), String> {
+    let config_path = get_game_config_path(&app, &game_name);
+    let game_dir = config_path.parent().ok_or("Invalid game path")?;
+    
+    let source_path = PathBuf::from(&file_path);
+    if !source_path.exists() {
+        return Err(format!("Source file does not exist: {}", file_path));
+    }
+    
+    let extension = source_path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_lowercase();
+        
+    let target_name = format!("Background.{}", extension);
+    let target_path = game_dir.join(&target_name);
+
+    if bg_type == "image" {
+        let candidates = ["Background.png", "Background.webp", "Background.jpg", "Background.jpeg"]; 
+        for c in candidates {
+            let p = game_dir.join(c);
+            if p.exists() { let _ = fs::remove_file(p); }
+        }
+    } else if bg_type == "video" {
+        let candidates = ["Background.mp4", "Background.webm", "Background.mkv"]; 
+        for c in candidates {
+            let p = game_dir.join(c);
+            if p.exists() { let _ = fs::remove_file(p); }
+        }
+    } else {
+        return Err(format!("Unknown background type: {}", bg_type));
+    }
+
+    fs::copy(&source_path, &target_path)
+        .map_err(|e| format!("Failed to copy file from {} to {:?}: {}", file_path, target_path, e))?;
+        
+    Ok(())
+}
+
+#[tauri::command]
+pub fn set_game_icon(app: AppHandle, game_name: String, file_path: String) -> Result<(), String> {
+    let config_path = get_game_config_path(&app, &game_name);
+    let game_dir = config_path.parent().ok_or("Invalid game path")?;
+    
+    let source_path = PathBuf::from(&file_path);
+    if !source_path.exists() { return Err(format!("File not found: {}", file_path)); }
+    
+    let target_path = game_dir.join("Icon.png");
+    
+    if target_path.exists() {
+        let _ = fs::remove_file(&target_path);
+    }
+    
+    fs::copy(&source_path, &target_path)
+        .map_err(|e| format!("Failed to copy icon: {}", e))?;
         
     Ok(())
 }

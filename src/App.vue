@@ -32,7 +32,7 @@ onUnmounted(() => {
     <transition-group name="bg-trans">
       <!-- Image Background -->
       <div 
-        v-if="appSettings.bgType === 'image'"
+        v-if="appSettings.bgType === 'image' && appSettings.bgImage"
         :key="appSettings.bgImage"
         class="bg-item"
         :style="{ backgroundImage: `url(${appSettings.bgImage})` }"
@@ -40,7 +40,7 @@ onUnmounted(() => {
 
       <!-- Video Background -->
       <video 
-        v-if="appSettings.bgType === 'video'" 
+        v-if="appSettings.bgType === 'video' && appSettings.bgVideo" 
         :key="appSettings.bgVideo"
         :src="appSettings.bgVideo" 
         autoplay loop muted playsinline 
