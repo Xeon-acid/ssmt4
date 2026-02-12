@@ -74,6 +74,7 @@ pub fn run() {
             commands::game_config::get_3dmigoto_latest_release,
             commands::game_config::install_3dmigoto_update,
             commands::game_launcher::start_game,
+            commands::game_launcher::check_3dmigoto_integrity,
             commands::mod_manager::watch_mods,
             commands::mod_manager::unwatch_mods,
             commands::game_launcher::toggle_symlink,

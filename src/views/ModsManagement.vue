@@ -5,7 +5,7 @@ import { listen, UnlistenFn } from '@tauri-apps/api/event';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { gamesList, appSettings } from '../store';
 import { open } from '@tauri-apps/plugin-dialog';
-import { Folder, Refresh, Picture, Search, Plus, Edit, Delete, FolderAdd, ArrowRight, Sort, Setting } from '@element-plus/icons-vue';
+import { Folder, Refresh, Picture, Search, Plus, Edit, Delete, FolderAdd, ArrowRight, Sort } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 
 interface ModInfo {

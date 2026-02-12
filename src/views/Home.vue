@@ -1,12 +1,14 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
-import { message } from '@tauri-apps/plugin-dialog'
+import { computed, ref, onMounted, onUnmounted, inject } from 'vue'
+import { message, confirm } from '@tauri-apps/plugin-dialog'
 // import  nextTick from 'vue'
 import { gamesList, switchToGame, appSettings, loadGames } from '../store' 
 import { invoke } from '@tauri-apps/api/core'
 // import { openPath } from '@tauri-apps/plugin-opener'; // Import openPath
 import { join } from '@tauri-apps/api/path';
 import GameSettingsModal from '../components/GameSettingsModal.vue'
+
+const notify = inject<any>('notify');
 
 // Computed property to get sidebar games (filtered and reverse order)
 const sidebarGames = computed(() => {
@@ -148,17 +150,33 @@ const launchGame = async () => {
      return;
   }
   
-  isLaunching.value = true;
-  
   try {
-    await invoke('start_game', { gameName });
-  } catch (e) {
+      // Check 3Dmigoto Integrity
+      const safe = await invoke<boolean>('check_3dmigoto_integrity', { gameName: gameName });
+      if (!safe) {
+          const yes = await confirm(
+              '当前游戏目录下缺少必要的 3Dmigoto 文件 (d3d11.dll 或 d3dx.ini)。\n\n这可能导致 Mod 无法生效。\n是否现在检查并安装 3Dmigoto 更新？', 
+              { title: '缺少核心组件', kind: 'warning', okLabel: '检查更新', cancelLabel: '取消' }
+          );
+          
+          if (yes) {
+              openSettingsAndUpdate();
+          }
+          return; // Stop launch
+      }
+      
+      isLaunching.value = true;
+      await invoke('start_game', { gameName });
+      
+  } catch (e: any) {
     console.error('Start Game Error:', e);
     await message(`启动失败: ${e}`, { title: '错误', kind: 'error' });
   } finally {
-    setTimeout(() => {
-        isLaunching.value = false;
-    }, 1500); // 1.5s delay
+    if(isLaunching.value) {
+        setTimeout(() => {
+            isLaunching.value = false;
+        }, 1500);
+    }
   }
 }
 
