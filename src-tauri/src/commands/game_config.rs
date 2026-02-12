@@ -21,7 +21,7 @@ fn default_bg_type() -> BGType {
 impl Default for BasicSettings {
     fn default() -> Self {
         Self {
-            game_preset: "Default".to_string(),
+            game_preset: "GIMI".to_string(),
             background_type: BGType::Image,
         }
     }
@@ -46,16 +46,23 @@ fn get_game_config_path(app: &AppHandle, game_name: &str) -> PathBuf {
 #[tauri::command]
 pub fn load_game_config(app: AppHandle, game_name: String) -> Result<GameConfig, String> {
     let config_path = get_game_config_path(&app, &game_name);
+    println!("[GameConfig] Loading config for: {}", game_name);
+    println!("[GameConfig] Config path: {:?}", config_path);
 
     if config_path.exists() {
+        println!("[GameConfig] File exists, reading...");
         let content = fs::read_to_string(&config_path)
             .map_err(|e| format!("Failed to read config: {}", e))?;
+
+        println!("[GameConfig] Raw content: {}", content);
 
         let config: GameConfig =
             serde_json::from_str(&content).map_err(|e| format!("Failed to parse config: {}", e))?;
 
+        println!("[GameConfig] Parsed config: {:?}", config);
         Ok(config)
     } else {
+        println!("[GameConfig] File does not exist, using default.");
         // Return default if not exists
         Ok(GameConfig::default())
     }
@@ -68,6 +75,9 @@ pub fn save_game_config(
     config: GameConfig,
 ) -> Result<(), String> {
     let config_path = get_game_config_path(&app, &game_name);
+    println!("[GameConfig] Saving config for: {}", game_name);
+    println!("[GameConfig] Target path: {:?}", config_path);
+    println!("[GameConfig] Content to save: {:?}", config);
 
     // Ensure parent dir exists (it should, since game exists, but just in case)
     if let Some(parent) = config_path.parent() {
@@ -78,7 +88,9 @@ pub fn save_game_config(
     let content = serde_json::to_string_pretty(&config)
         .map_err(|e| format!("Failed to serialize config: {}", e))?;
 
-    fs::write(config_path, content).map_err(|e| format!("Failed to write config: {}", e))?;
+    fs::write(&config_path, &content).map_err(|e| format!("Failed to write config: {}", e))?;
+    
+    println!("[GameConfig] Successfully wrote to file: {:?}", config_path);
 
     Ok(())
 }

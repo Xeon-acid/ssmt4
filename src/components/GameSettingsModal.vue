@@ -20,7 +20,7 @@ interface GameConfig {
   basic: {
     // configName is kept in UI state but separate from the object sent to backend
     gamePreset: string;
-    backgroundType?: 'image' | 'video';
+    backgroundType?: 'Image' | 'Video';
   };
   threeDMigoto: {
       installDir: string;
@@ -39,7 +39,7 @@ interface GameConfig {
 }
 
 const config = reactive<GameConfig>({
-  basic: { gamePreset: 'Default', backgroundType: 'image' },
+  basic: { gamePreset: 'GIMI', backgroundType: 'Image' },
   threeDMigoto: {
       installDir: '',
       targetExePath: '',
@@ -100,7 +100,7 @@ const loadConfig = async () => {
     // Merge
     config.basic = {
         gamePreset: data.basic.gamePreset || 'GIMI',
-        backgroundType: (data.basic as any).backgroundType || 'image'
+        backgroundType: (data.basic as any).backgroundType || 'Image'
     };
     
     const t = data.threeDMigoto || {};
@@ -139,6 +139,9 @@ const loadConfig = async () => {
 
 const saveConfig = async () => {
   if (!props.gameName || isLoading.value) return; // Prevent saving if loading isn't complete
+  console.log('[GameSettingsModal] Starting saveConfig for:', props.gameName);
+  console.log('[GameSettingsModal] Current config state:', JSON.parse(JSON.stringify(config)));
+
   try {
     await invoke('save_game_config', { 
       gameName: props.gameName, 
@@ -179,7 +182,7 @@ const selectIcon = async () => {
 
 const selectBackground = async () => {
     try {
-        const isVideo = config.basic.backgroundType === 'video';
+        const isVideo = config.basic.backgroundType === 'Video';
         const filters = isVideo 
             ? [{ name: 'Videos', extensions: ['mp4', 'webm'] }]
             : [{ name: 'Images', extensions: ['png', 'webp'] }];
@@ -477,7 +480,7 @@ const close = () => {
 
               <div class="setting-group">
                 <div class="setting-label">游戏预设</div>
-                <el-select v-model="config.basic.gamePreset" placeholder="Select" class="custom-select">
+                <el-select v-model="config.basic.gamePreset" placeholder="Select" class="custom-select" @change="saveConfig">
                   <el-option
                     v-for="item in presetOptions"
                     :key="item.value"
@@ -496,14 +499,14 @@ const close = () => {
                 <div class="setting-label">背景设置</div>
                 <div style="margin-bottom: 10px;">
                   <el-radio-group v-model="config.basic.backgroundType" @change="handleBgTypeChange">
-                    <el-radio value=Image label="image">图片</el-radio>
-                    <el-radio value=Video label="video">视频</el-radio>
+                    <el-radio value="Image" label="Image">图片</el-radio>
+                    <el-radio value="Video" label="Video">视频</el-radio>
                   </el-radio-group>
                 </div>
                 <!-- Separate check: if video, show video file btn, if image, show image file btn -->
                 <div class="button-row">
                     <button class="action-btn" @click="selectBackground">
-                       {{ config.basic.backgroundType === 'video' ? '选择背景视频' : '选择背景图片' }}
+                       {{ config.basic.backgroundType === 'Video' ? '选择背景视频' : '选择背景图片' }}
                     </button>
                     <button v-if="canAutoUpdate" class="action-btn" @click="autoUpdateBackground">
                        自动更新背景
