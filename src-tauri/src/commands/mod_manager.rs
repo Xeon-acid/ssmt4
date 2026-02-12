@@ -615,7 +615,7 @@ pub async fn install_mod_archive(
     };
 
     if dest_dir.exists() {
-        return Err(format!("Destination directory already exists: {:?}", dest_dir));
+        return Err("该分类下已存在同名 Mod，请更改名称后重试".to_string());
     }
     
     fs::create_dir_all(&dest_dir).map_err(|e| format!("Failed to create destination: {}", e))?;
