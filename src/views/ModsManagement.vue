@@ -500,6 +500,17 @@ const setGroupIcon = async (groupPath: string) => {
     }
 };
 
+const openModGroupFolder = async (groupPath: string) => {
+    try {
+        await invoke('open_mod_group_folder', {
+            gameName: selectedGame.value,
+            groupPath: groupPath
+        });
+    } catch (e: any) {
+        ElMessage.error('无法打开文件夹: ' + e);
+    }
+};
+
 const filteredMods = computed(() => {
     let result = mods.value;
 
@@ -645,7 +656,6 @@ const getGroupIcon = (groupId: string) => {
                     :props="{ label: 'label', children: 'children' }"
                     :expand-on-click-node="false"
                     :current-node-key="selectedGroup"
-                    default-expand-all
                     highlight-current
                     @node-click="(data) => selectedGroup = data.id"
                     class="group-tree"
@@ -816,6 +826,10 @@ const getGroupIcon = (groupId: string) => {
          <div v-if="contextMenu.type === 'group'" class="menu-content">
             <div class="menu-header">{{ contextMenu.target.split('/').pop() }}</div>
             <div class="menu-divider"></div>
+            <div class="menu-item" @click="openModGroupFolder(contextMenu.target)">
+                <el-icon><Folder /></el-icon>
+                <span>打开文件夹</span>
+            </div>
             <div class="menu-item" @click="setGroupIcon(contextMenu.target)">
                 <el-icon><Picture /></el-icon>
                 <span>设置图标</span>

@@ -252,6 +252,18 @@ pub async fn set_mod_group_icon(app: AppHandle, game_name: String, group_path: S
 }
 
 #[tauri::command]
+pub async fn open_mod_group_folder(app: AppHandle, game_name: String, group_path: String) -> Result<(), String> {
+    let install_dir = get_game_install_dir(&app, &game_name)?;
+    let dest_dir = install_dir.join("Mods").join(&group_path);
+
+    if !dest_dir.exists() {
+        return Err("Group directory not found".to_string());
+    }
+
+    crate::commands::common::open_in_explorer(dest_dir.to_string_lossy().to_string())
+}
+
+#[tauri::command]
 pub async fn open_game_mods_folder(app: AppHandle, game_name: String) -> Result<(), String> {
     let install_dir = get_game_install_dir(&app, &game_name)?;
     let mods_dir = install_dir.join("Mods");

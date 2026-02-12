@@ -84,6 +84,7 @@ pub fn run() {
             commands::mod_manager::install_mod_archive,
             commands::mod_manager::create_mod_group,
             commands::mod_manager::set_mod_group_icon,
+            commands::mod_manager::open_mod_group_folder,
             commands::mod_manager::rename_mod_group,
             commands::mod_manager::move_mod_to_group,
             commands::mod_manager::delete_mod_group
