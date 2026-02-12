@@ -21,6 +21,16 @@ pub struct AppConfig {
     pub window_height: f64,
     #[serde(default)]
     pub github_token: String,
+    
+    // Page Visibility Settings
+    #[serde(default)]
+    pub show_workbench: bool,
+    #[serde(default)]
+    pub show_stickers: bool,
+    #[serde(default)]
+    pub show_websites: bool,
+    #[serde(default)]
+    pub show_documents: bool,
 }
 
 impl Default for AppConfig {
@@ -31,13 +41,17 @@ impl Default for AppConfig {
             bg_video: "".to_string(),
             sidebar_opacity: 0.3,
             sidebar_blur: 20.0,
-            content_opacity: 0.2,
-            content_blur: 3.0,
+            content_opacity: 0.0,
+            content_blur: 0.0,
             cache_dir: "".to_string(),
             current_config_name: "Default".to_string(),
             window_width: 1000.0,
             window_height: 600.0,
             github_token: "".to_string(),
+            show_workbench: false,
+            show_stickers: false,
+            show_websites: false,
+            show_documents: false,
         }
     }
 }

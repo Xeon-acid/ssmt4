@@ -14,10 +14,10 @@
       {
         "center": true,
         "title": "SSMT4 V0.0.1",
-        "width": 1000,
-        "height": 600,
-        "minWidth": 1000,
-        "minHeight": 600,
+        "width": 1280,
+        "height": 720,
+        "minWidth": 1056,
+        "minHeight": 594,
         "decorations": false,
         "backgroundColor": "#000000"
       }

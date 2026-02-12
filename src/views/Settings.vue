@@ -47,14 +47,6 @@ const selectCacheDir = async () => {
       </template>
       
       <el-form label-width="140px">
-        <div class="settings-divider">侧边栏样式 (Sidebar)</div>
-        <el-form-item label="不透明度 (Opacity)">
-          <el-slider v-model="appSettings.sidebarOpacity" :min="0" :max="1" :step="0.01" show-input />
-        </el-form-item>
-        <el-form-item label="模糊度 (Blur)">
-          <el-slider v-model="appSettings.sidebarBlur" :min="0" :max="50" :step="1" show-input />
-        </el-form-item>
-
         <div class="settings-divider">内容区样式 (Content)</div>
         <el-form-item label="不透明度 (Opacity)">
           <el-slider v-model="appSettings.contentOpacity" :min="0" :max="1" :step="0.01" show-input />
@@ -68,14 +60,23 @@ const selectCacheDir = async () => {
     <br />
 
     <el-card>
-      <template #header>其它设置</template>
-       <!-- Placeholder for original settings -->
+      <template #header>
+        <div class="card-header">
+          <span>页面显示设置</span>
+        </div>
+      </template>
       <el-form label-width="140px">
-        <el-form-item label="主题色">
-          <el-color-picker />
+        <el-form-item label="工作台页面">
+          <el-switch v-model="appSettings.showWorkbench" />
         </el-form-item>
-        <el-form-item label="启用通知">
-          <el-switch />
+        <el-form-item label="贴图标记页面">
+          <el-switch v-model="appSettings.showStickers" />
+        </el-form-item>
+        <el-form-item label="常用网址页面">
+          <el-switch v-model="appSettings.showWebsites" />
+        </el-form-item>
+        <el-form-item label="使用文档页面">
+          <el-switch v-model="appSettings.showDocuments" />
         </el-form-item>
       </el-form>
     </el-card>

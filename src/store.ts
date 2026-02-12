@@ -23,6 +23,10 @@ export interface AppSettings {
   cacheDir: string;
   currentConfigName: string;
   githubToken: string;
+  showWorkbench: boolean;
+  showStickers: boolean;
+  showWebsites: boolean;
+  showDocuments: boolean;
 }
 
 export interface GameInfo {
@@ -40,11 +44,15 @@ const defaultSettings: AppSettings = {
   bgVideo: '',
   sidebarOpacity: 0.3,
   sidebarBlur: 20,
-  contentOpacity: 0.2,
-  contentBlur: 3,
+  contentOpacity: 0,
+  contentBlur: 0,
   cacheDir: '',
   currentConfigName: 'Default',
-  githubToken: ''
+  githubToken: '',
+  showWorkbench: false,
+  showStickers: false,
+  showWebsites: false,
+  showDocuments: false,
 }
 
 export const appSettings = reactive<AppSettings>({ ...defaultSettings })

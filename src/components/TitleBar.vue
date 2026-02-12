@@ -2,6 +2,7 @@
 import { ref, onMounted, onUnmounted } from 'vue';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useRouter, useRoute } from 'vue-router';
+import { appSettings } from '../store';
 
 const appWindow = getCurrentWindow();
 const router = useRouter();
@@ -41,9 +42,26 @@ const startDrag = () => {
 const toggleGamePage = (e: MouseEvent) => {
     e.stopPropagation(); // prevent drag
     if (route.path === '/games') {
-        router.push('/');
+        if (window.history.length > 1) {
+            router.back();
+        } else {
+            router.push('/');
+        }
     } else {
         router.push('/games');
+    }
+};
+
+const toggleSettingsPage = (e: MouseEvent) => {
+    e.stopPropagation();
+    if (route.path === '/settings') {
+        if (window.history.length > 1) {
+            router.back();
+        } else {
+            router.push('/');
+        }
+    } else {
+        router.push('/settings');
     }
 };
 
@@ -59,19 +77,19 @@ const navTo = (path: string) => {
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
             <span class="nav-text">主页</span>
         </div>
-        <div class="nav-button" :class="{ active: route.path === '/workbench' }" @click="navTo('/workbench')" title="工作台">
+        <div v-if="appSettings.showWorkbench" class="nav-button" :class="{ active: route.path === '/workbench' }" @click="navTo('/workbench')" title="工作台">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
             <span class="nav-text">工作台</span>
         </div>
-        <div class="nav-button" :class="{ active: route.path === '/stickers' }" @click="navTo('/stickers')" title="贴图标记">
+        <div v-if="appSettings.showStickers" class="nav-button" :class="{ active: route.path === '/stickers' }" @click="navTo('/stickers')" title="贴图标记">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
             <span class="nav-text">贴图标记</span>
         </div>
-        <div class="nav-button" :class="{ active: route.path === '/websites' }" @click="navTo('/websites')" title="常用网址">
+        <div v-if="appSettings.showWebsites" class="nav-button" :class="{ active: route.path === '/websites' }" @click="navTo('/websites')" title="常用网址">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
             <span class="nav-text">常用网址</span>
         </div>
-        <div class="nav-button" :class="{ active: route.path === '/documents' }" @click="navTo('/documents')" title="使用文档">
+        <div v-if="appSettings.showDocuments" class="nav-button" :class="{ active: route.path === '/documents' }" @click="navTo('/documents')" title="使用文档">
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
             <span class="nav-text">使用文档</span>
         </div>
@@ -95,7 +113,7 @@ const navTo = (path: string) => {
       </div>
 
       <!-- Settings Button (Placed to right of Game Toggle) -->
-      <div class="control-button settings-btn" :class="{ active: route.path === '/settings' }" @click="navTo('/settings')" title="Settings">
+      <div class="control-button settings-btn" :class="{ active: route.path === '/settings' }" @click="toggleSettingsPage" title="Settings">
          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1.82 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
       </div>
 
@@ -144,7 +162,7 @@ const navTo = (path: string) => {
     display: flex;
     align-items: center;
     height: 100%;
-    padding-left: 8px; /* Safe space from edge */
+    padding-left: 0; 
     z-index: 10001; /* Above drag region */
 }
 

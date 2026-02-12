@@ -50,12 +50,12 @@ onUnmounted(() => {
     </transition-group>
   </div>
   
-  <!-- Home & Websites Ambient Shadow Layer -->
+  <!-- Home & Websites & Settings Ambient Shadow Layer -->
   <div class="home-shadow-layer" v-if="route.path === '/' || route.path === '/websites'"></div>
 
   <!-- Global Mask Layer for Game Library Page -->
   <transition name="fade">
-    <div v-if="route.path === '/games'" class="global-dim-layer"></div>
+    <div v-if="route.path === '/games' || route.path === '/settings'" class="global-dim-layer"></div>
   </transition>
 
   <el-config-provider>
