@@ -4135,6 +4135,7 @@ dependencies = [
 name = "ssmt4"
 version = "0.1.0"
 dependencies = [
+ "encoding_rs",
  "futures-util",
  "notify",
  "reqwest 0.12.28",

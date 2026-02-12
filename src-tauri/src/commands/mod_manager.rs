@@ -6,6 +6,17 @@ use tauri::{AppHandle, Emitter, State};
 use notify::{RecommendedWatcher, RecursiveMode, Watcher, Config};
 use std::sync::Mutex;
 
+fn decode_zip_name(file: &zip::read::ZipFile) -> String {
+    let raw = file.name_raw();
+    // Try interpreting as UTF-8 first
+    if let Ok(s) = std::str::from_utf8(raw) {
+        return s.to_string();
+    }
+    // Fallback to GBK
+    let (cow, _encoding, _malformed) = encoding_rs::GBK.decode(raw);
+    cow.to_string()
+}
+
 // Watcher State
 pub struct ModWatcher(pub Mutex<Option<RecommendedWatcher>>);
 
@@ -492,7 +503,7 @@ pub async fn preview_mod_archive(path: String) -> Result<ArchivePreview, String>
 
         for i in 0..archive.len() {
             if let Ok(file) = archive.by_index(i) {
-                let name = file.name().to_string();
+                let name = decode_zip_name(&file);
                 if name.ends_with('/') {
                      // Check top level dirs
                      let parts: Vec<&str> = name.split('/').filter(|s| !s.is_empty()).collect();
@@ -622,7 +633,7 @@ pub async fn install_mod_archive(
         
         for i in 0..archive.len() {
              if let Ok(file) = archive.by_index(i) {
-                let name = file.name();
+                let name = decode_zip_name(&file);
                 // skip junk
                 if name.starts_with("__MACOSX") || name.ends_with(".DS_Store") { continue; }
                 
@@ -646,7 +657,7 @@ pub async fn install_mod_archive(
 
         for i in 0..archive.len() {
              let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
-             let name = file.name().to_string();
+             let name = decode_zip_name(&file);
              if name.starts_with("__MACOSX") || name.ends_with(".DS_Store") { continue; }
              
              let mut target_name = name.clone();
