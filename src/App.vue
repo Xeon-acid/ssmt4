@@ -5,6 +5,9 @@ import { useRoute } from "vue-router";
 import { appSettings, BGType } from "./store";
 import TitleBar from "./components/TitleBar.vue";
 
+
+
+
 const route = useRoute();
 
 // Disable default right-click context menu

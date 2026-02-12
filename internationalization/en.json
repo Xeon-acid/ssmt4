@@ -1,0 +1,13 @@
+{
+    "home": {
+        "hidegame": {
+            "fail": "Failed to hide game:"
+        },
+        "css": {
+            "startgame": "Start Game"
+        }
+    },
+    "settings":{
+        "language": "Surface Language"
+    }
+}
